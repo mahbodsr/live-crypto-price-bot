@@ -36,7 +36,7 @@ new CronJob(`*/${INTERVAL_TIMER} * * * *`, () => {
   try {
     editMessage(+process.env.CHAT_ID!, lastMsg.message_id);
   } catch {}
-});
+}).start();
 
 const getPrices = async () => {
   const res = await axios.get(process.env.GET_PRICE_LINK!);
