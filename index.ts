@@ -59,7 +59,7 @@ const sendMessage = async (id: number) => {
     reply_markup: inlineKeyboard,
     parse_mode: "HTML",
   });
-  await bot.api.pinChatMessage(sentMsg.message_id, id, {
+  await bot.api.pinChatMessage(id, sentMsg.message_id, {
     disable_notification: true,
   });
 };
@@ -75,7 +75,7 @@ bot.callbackQuery("update", async (ctx) => {
     });
   } catch (err) {
     if (err instanceof GrammyError && err.error_code === 400) return;
-    console.log(err)
+    console.log(err);
     sendMessage(ctx.chat.id);
   }
 });
