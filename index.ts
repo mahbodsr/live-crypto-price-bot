@@ -7,16 +7,18 @@ import axios from "axios";
 import { Message } from "grammy/types";
 import { CronJob } from "cron";
 
+const ERR_MSG_NOT_MODIFIED = "Bad Request: message is not modified";
+
 interface IOverrides {
   [key: string]: { nickname: string; converter: (price: number) => number };
 }
 
+let lastMsg: Message.TextMessage | undefined;
+const INTERVAL_TIMER = +(process.env.INTERVAL_TIMER || 5);
 process.env.TZ = "Asia/Tehran";
 
-let lastMsg: Message.TextMessage | undefined;
 const bot = new Bot(process.env.BOT_TOKEN!);
 
-const INTERVAL_TIMER = +(process.env.INTERVAL_TIMER || 5);
 bot.api.config.use(apiThrottler());
 bot.api.config.use(autoRetry());
 
@@ -31,14 +33,18 @@ const dstCurrency = new URL(process.env.GET_PRICE_LINK!).searchParams
   .get("dstCurrency")!
   .split(",");
 
-new CronJob(`*/${INTERVAL_TIMER} * * * *`, () => {
+new CronJob(`*/${INTERVAL_TIMER} * * * *`, async () => {
   if (lastMsg === undefined) return;
   try {
-    editMessage(+process.env.CHAT_ID!, lastMsg.message_id);
+    await editMessage(+process.env.CHAT_ID!, lastMsg.message_id);
   } catch (err) {
-    // if (err instanceof GrammyError && err. === 400) return;
+    if (
+      err instanceof GrammyError &&
+      err.description.startsWith(ERR_MSG_NOT_MODIFIED)
+    )
+      return;
     console.log(err);
-    // sendMessage(ctx.chat.id);
+    await sendMessage(+process.env.CHAT_ID!);
   }
 }).start();
 
@@ -107,22 +113,21 @@ const sendMessage = async (chatId: number) => {
 bot.callbackQuery("update", async (ctx) => {
   if (ctx.chat === undefined || ctx.msg?.message_id === undefined) return;
   try {
-    editMessage(ctx.chat.id, ctx.msg.message_id);
+    await editMessage(ctx.chat.id, ctx.msg.message_id);
   } catch (err) {
-    if (err instanceof GrammyError) {
-      console.log(err.message);
-      console.log(err.description);
-      console.log(err.name);
-      console.log(err.stack);
-    }
-    // sendMessage(ctx.chat.id);
+    if (
+      err instanceof GrammyError &&
+      err.description.startsWith(ERR_MSG_NOT_MODIFIED)
+    )
+      return;
+    await sendMessage(ctx.chat.id);
   }
 });
 
 bot.command("current", async (ctx) => {
   if (ctx.chat.id !== +process.env.CHAT_ID!) return;
   try {
-    sendMessage(ctx.chat.id);
+    await sendMessage(ctx.chat.id);
   } catch {
     await ctx.reply("Internal Error.\nCall @MahBodSr");
   }
