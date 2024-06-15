@@ -109,8 +109,12 @@ bot.callbackQuery("update", async (ctx) => {
   try {
     editMessage(ctx.chat.id, ctx.msg.message_id);
   } catch (err) {
-    // if (err instanceof GrammyError && err. === 400) return;
-    console.log(err);
+    if (err instanceof GrammyError) {
+      console.log(err.message);
+      console.log(err.description);
+      console.log(err.name);
+      console.log(err.stack);
+    }
     // sendMessage(ctx.chat.id);
   }
 });
