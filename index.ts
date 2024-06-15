@@ -34,17 +34,17 @@ bot.command("current", async (ctx) => {
       dstCurrency.forEach((dst) => {
         let price = src.toUpperCase() + "/";
         if (dst in overrides) {
-          price = `${overrides[dst].nickname}:  ${overrides[dst]
+          price += `${overrides[dst].nickname}:  ${overrides[dst]
             .converter(+res.data.stats[`${src}-${dst}`].latest)
             .toLocaleString()}`;
         } else {
-          price = `${dst.toUpperCase()}:  ${(
+          price += `${dst.toUpperCase()}:  ${(
             res.data.stats[`${src}-${dst}`].latest as string
           ).toLocaleString()}`;
         }
         prices.push(price);
       });
-      prices.push();
+      prices.push("");
     });
     // prices +=
     //   "NOT/TOMAN: \t" +
