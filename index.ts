@@ -1,4 +1,4 @@
-import { Bot, InlineKeyboard } from "grammy";
+import { Bot, GrammyError, InlineKeyboard } from "grammy";
 import { createServer } from "http";
 import { apiThrottler } from "@grammyjs/transformer-throttler";
 import { autoRetry } from "@grammyjs/auto-retry";
@@ -55,9 +55,12 @@ const getPrices = async () => {
 const sendMessage = async (id: number) => {
   const prices = await getPrices();
   const inlineKeyboard = new InlineKeyboard().text("Update 🔄", "update");
-  await bot.api.sendMessage(id, prices.join("\n"), {
+  const sentMsg = await bot.api.sendMessage(id, prices.join("\n"), {
     reply_markup: inlineKeyboard,
     parse_mode: "HTML",
+  });
+  await bot.api.pinChatMessage(sentMsg.message_id, id, {
+    disable_notification: true,
   });
 };
 
@@ -71,6 +74,7 @@ bot.callbackQuery("update", async (ctx) => {
       parse_mode: "HTML",
     });
   } catch (err) {
+    if (err instanceof GrammyError && err.error_code === 400) return;
     console.log(err)
     sendMessage(ctx.chat.id);
   }
