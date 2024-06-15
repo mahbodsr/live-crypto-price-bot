@@ -34,9 +34,9 @@ const getPrices = async () => {
       let price = src.toUpperCase() + "/";
       const stat = res.data.stats[`${src}-${dst}`];
       const isGoingUp = +stat.dayChange >= 0;
-      const formatedDayChange = ` <pre>(${isGoingUp ? "+" : ""}${
+      const formatedDayChange = ` <code>(${isGoingUp ? "+" : ""}${
         stat.dayChange
-      }% ${isGoingUp ? "⤴️" : "⤵️"})</pre>`;
+      }% ${isGoingUp ? "⤴️" : "⤵️"})</code>`;
       if (dst in overrides) {
         price += `${overrides[dst].nickname}: <b>${overrides[dst]
           .converter(+stat.latest)
@@ -70,7 +70,8 @@ bot.callbackQuery("update", async (ctx) => {
       reply_markup: inlineKeyboard,
       parse_mode: "HTML",
     });
-  } catch {
+  } catch (err) {
+    console.log(err)
     sendMessage(ctx.chat.id);
   }
 });
