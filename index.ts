@@ -10,7 +10,7 @@ const bot = new Bot(process.env.BOT_TOKEN!);
 bot.api.config.use(apiThrottler());
 bot.api.config.use(autoRetry());
 
-bot.command("/current", async (ctx) => {
+bot.command("current", async (ctx) => {
   if (ctx.chat.id !== +process.env.CHAT_ID!) return;
   try {
     const res = await axios.get(process.env.GET_PRICE_LINK!);
