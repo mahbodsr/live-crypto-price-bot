@@ -33,7 +33,9 @@ const dstCurrency = new URL(process.env.GET_PRICE_LINK!).searchParams
 
 new CronJob(`*/${INTERVAL_TIMER} * * * *`, () => {
   if (lastMsg === undefined) return;
-  editMessage(+process.env.CHAT_ID!, lastMsg.message_id);
+  try {
+    editMessage(+process.env.CHAT_ID!, lastMsg.message_id);
+  } catch {}
 });
 
 const getPrices = async () => {
