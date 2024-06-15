@@ -33,7 +33,13 @@ const dstCurrency = new URL(process.env.GET_PRICE_LINK!).searchParams
 
 new CronJob(`*/${INTERVAL_TIMER} * * * *`, () => {
   if (lastMsg === undefined) return;
-  editMessage(+process.env.CHAT_ID!, lastMsg.message_id).catch(() => {});
+  try {
+    editMessage(+process.env.CHAT_ID!, lastMsg.message_id);
+  } catch (err) {
+    // if (err instanceof GrammyError && err. === 400) return;
+    console.log(err);
+    // sendMessage(ctx.chat.id);
+  }
 }).start();
 
 const getPrices = async () => {
@@ -103,9 +109,9 @@ bot.callbackQuery("update", async (ctx) => {
   try {
     editMessage(ctx.chat.id, ctx.msg.message_id);
   } catch (err) {
-    if (err instanceof GrammyError && err.error_code === 400) return;
+    // if (err instanceof GrammyError && err. === 400) return;
     console.log(err);
-    sendMessage(ctx.chat.id);
+    // sendMessage(ctx.chat.id);
   }
 });
 
