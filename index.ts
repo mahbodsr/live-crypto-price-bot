@@ -11,6 +11,8 @@ interface IOverrides {
   [key: string]: { nickname: string; converter: (price: number) => number };
 }
 
+process.env.TZ = "Asia/Tehran";
+
 let lastMsg: Message.TextMessage | undefined;
 const bot = new Bot(process.env.BOT_TOKEN!);
 
@@ -19,7 +21,7 @@ bot.api.config.use(apiThrottler());
 bot.api.config.use(autoRetry());
 
 const overrides: IOverrides = {
-  rls: { nickname: "TOMAN", converter: (price: number) => price / 10 },
+  rls: { nickname: "IRT", converter: (price: number) => price / 10 },
 };
 
 const srcCurrency = new URL(process.env.GET_PRICE_LINK!).searchParams
@@ -36,6 +38,10 @@ new CronJob(`*/${INTERVAL_TIMER} * * * *`, () => {
 
 const getPrices = async () => {
   const res = await axios.get(process.env.GET_PRICE_LINK!);
+  const currentTime = new Date().toLocaleTimeString("fa-IR-u-nu-latn", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   const prices: string[] = [];
   srcCurrency.forEach((src) => {
     dstCurrency.forEach((dst) => {
@@ -61,8 +67,9 @@ const getPrices = async () => {
   prices.push(
     `\n<i>Auto-updates every ${INTERVAL_TIMER} minute${
       INTERVAL_TIMER > 1 ? "s" : ""
-    } 🔄</i>`
+    } 🔄 - <b>${currentTime}</b></i>`
   );
+  prices.push();
   return prices.join("\n");
 };
 
