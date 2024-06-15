@@ -32,6 +32,7 @@ bot.command("current", async (ctx) => {
     const prices: string[] = [];
     srcCurrency.forEach((src) => {
       dstCurrency.forEach((dst) => {
+        if (dst === src) return;
         let price = src.toUpperCase() + "/";
         if (dst in overrides) {
           price += `${overrides[dst].nickname}:  ${overrides[dst]
@@ -46,14 +47,6 @@ bot.command("current", async (ctx) => {
       });
       prices.push("");
     });
-    // prices +=
-    //   "NOT/TOMAN: \t" +
-    //   (+res.data.stats["not-rls"].latest / 10).toLocaleString();
-    // prices += "\nNOT/USDT: \t" + res.data.stats["not-usdt"].latest;
-    // prices +=
-    //   "\nTON/TOMAN: \t" +
-    //   (+res.data.stats["ton-rls"].latest / 10).toLocaleString();
-    // prices += "\nTON/USDT: \t" + res.data.stats["ton-usdt"].latest;
 
     ctx.reply(prices.join("\n"), {
       reply_parameters: { message_id: ctx.msg.message_id },
