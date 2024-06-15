@@ -33,7 +33,7 @@ const dstCurrency = new URL(process.env.GET_PRICE_LINK!).searchParams
 
 new CronJob(`*/${INTERVAL_TIMER} * * * *`, () => {
   if (lastMsg === undefined) return;
-  editMessage(+process.env.CHAT_ID!, lastMsg.message_id).catch();
+  editMessage(+process.env.CHAT_ID!, lastMsg.message_id).catch(() => {});
 }).start();
 
 const getPrices = async () => {
@@ -76,7 +76,7 @@ const getPrices = async () => {
 const editMessage = async (chatId: number, msgId: number) => {
   const prices = await getPrices();
   const inlineKeyboard = new InlineKeyboard().text("Update 🔄", "update");
-  await bot.api.editMessageText(chatId, msgId, prices, {
+  return await bot.api.editMessageText(chatId, msgId, prices, {
     reply_markup: inlineKeyboard,
     parse_mode: "HTML",
   });
@@ -86,7 +86,9 @@ const sendMessage = async (chatId: number) => {
   const prices = await getPrices();
   const inlineKeyboard = new InlineKeyboard().text("Update 🔄", "update");
   if (lastMsg !== undefined)
-    await bot.api.deleteMessage(lastMsg.chat.id, lastMsg.message_id).catch();
+    await bot.api
+      .deleteMessage(lastMsg.chat.id, lastMsg.message_id)
+      .catch(() => {});
   lastMsg = await bot.api.sendMessage(chatId, prices, {
     reply_markup: inlineKeyboard,
     parse_mode: "HTML",
