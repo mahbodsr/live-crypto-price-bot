@@ -4,13 +4,17 @@ import { apiThrottler } from "@grammyjs/transformer-throttler";
 import { autoRetry } from "@grammyjs/auto-retry";
 import "./job";
 import axios from "axios";
+import { Message } from "grammy/types";
+import { CronJob } from "cron";
 
 interface IOverrides {
   [key: string]: { nickname: string; converter: (price: number) => number };
 }
 
+let lastMsg: Message.TextMessage | undefined;
 const bot = new Bot(process.env.BOT_TOKEN!);
 
+const INTERVAL_TIMER = +(process.env.INTERVAL_TIMER || 5);
 bot.api.config.use(apiThrottler());
 bot.api.config.use(autoRetry());
 
@@ -24,6 +28,11 @@ const srcCurrency = new URL(process.env.GET_PRICE_LINK!).searchParams
 const dstCurrency = new URL(process.env.GET_PRICE_LINK!).searchParams
   .get("dstCurrency")!
   .split(",");
+
+new CronJob(`*/${INTERVAL_TIMER} * * * *`, () => {
+  if (lastMsg === undefined) return;
+  editMessage(+process.env.CHAT_ID!, lastMsg.message_id);
+});
 
 const getPrices = async () => {
   const res = await axios.get(process.env.GET_PRICE_LINK!);
@@ -49,30 +58,41 @@ const getPrices = async () => {
       prices.push(price + formatedDayChange);
     });
   });
-  return prices;
+  prices.push(
+    `\n<i>Auto-updates every ${INTERVAL_TIMER} minute${
+      INTERVAL_TIMER > 1 ? "s" : ""
+    } 🔄</i>`
+  );
+  return prices.join("\n");
 };
 
-const sendMessage = async (id: number) => {
+const editMessage = async (chatId: number, msgId: number) => {
   const prices = await getPrices();
   const inlineKeyboard = new InlineKeyboard().text("Update 🔄", "update");
-  const sentMsg = await bot.api.sendMessage(id, prices.join("\n"), {
+  await bot.api.editMessageText(chatId, msgId, prices, {
     reply_markup: inlineKeyboard,
     parse_mode: "HTML",
   });
-  await bot.api.pinChatMessage(id, sentMsg.message_id, {
+};
+
+const sendMessage = async (chatId: number) => {
+  const prices = await getPrices();
+  const inlineKeyboard = new InlineKeyboard().text("Update 🔄", "update");
+  if (lastMsg !== undefined)
+    await bot.api.deleteMessage(lastMsg.chat.id, lastMsg.message_id);
+  lastMsg = await bot.api.sendMessage(chatId, prices, {
+    reply_markup: inlineKeyboard,
+    parse_mode: "HTML",
+  });
+  await bot.api.pinChatMessage(chatId, lastMsg.message_id, {
     disable_notification: true,
   });
 };
 
 bot.callbackQuery("update", async (ctx) => {
-  if (ctx.chat === undefined) return;
+  if (ctx.chat === undefined || ctx.msg?.message_id === undefined) return;
   try {
-    const prices = await getPrices();
-    const inlineKeyboard = new InlineKeyboard().text("Update 🔄", "update");
-    await ctx.editMessageText(prices.join("\n"), {
-      reply_markup: inlineKeyboard,
-      parse_mode: "HTML",
-    });
+    editMessage(ctx.chat.id, ctx.msg.message_id);
   } catch (err) {
     if (err instanceof GrammyError && err.error_code === 400) return;
     console.log(err);
