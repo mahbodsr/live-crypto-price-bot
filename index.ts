@@ -1,4 +1,4 @@
-import { Bot } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import { createServer } from "http";
 import { apiThrottler } from "@grammyjs/transformer-throttler";
 import { autoRetry } from "@grammyjs/auto-retry";
@@ -14,6 +14,10 @@ const bot = new Bot(process.env.BOT_TOKEN!);
 bot.api.config.use(apiThrottler());
 bot.api.config.use(autoRetry());
 
+const overrides: IOverrides = {
+  rls: { nickname: "TOMAN", converter: (price: number) => price / 10 },
+};
+
 const srcCurrency = new URL(process.env.GET_PRICE_LINK!).searchParams
   .get("srcCurrency")!
   .split(",");
@@ -21,42 +25,66 @@ const dstCurrency = new URL(process.env.GET_PRICE_LINK!).searchParams
   .get("dstCurrency")!
   .split(",");
 
-const overrides: IOverrides = {
-  rls: { nickname: "TOMAN", converter: (price: number) => price / 10 },
+const getPrices = async () => {
+  const res = await axios.get(process.env.GET_PRICE_LINK!);
+  const prices: string[] = [];
+  srcCurrency.forEach((src) => {
+    dstCurrency.forEach((dst) => {
+      if (dst === src) return;
+      let price = src.toUpperCase() + "/";
+      const stat = res.data.stats[`${src}-${dst}`];
+      const isGoingUp = +stat.dayChange >= 0;
+      const formatedDayChange = ` <pre>(${isGoingUp ? "+" : ""}${
+        stat.dayChange
+      }% ${isGoingUp ? "⤴️" : "⤵️"})</pre>`;
+      if (dst in overrides) {
+        price += `${overrides[dst].nickname}: <b>${overrides[dst]
+          .converter(+stat.latest)
+          .toLocaleString()}</b>`;
+      } else {
+        price += `${dst.toUpperCase()}: <b>${(
+          stat.latest as string
+        ).toLocaleString()}</b>`;
+      }
+      prices.push(price + formatedDayChange);
+    });
+  });
+  return prices;
 };
+
+const sendMessage = async (id: number) => {
+  const prices = await getPrices();
+  const inlineKeyboard = new InlineKeyboard().text("Update 🔄", "update");
+  await bot.api.sendMessage(id, prices.join("\n"), {
+    reply_markup: inlineKeyboard,
+    parse_mode: "HTML",
+  });
+};
+
+bot.callbackQuery("update", async (ctx) => {
+  if (ctx.chat === undefined) return;
+  try {
+    const prices = await getPrices();
+    const inlineKeyboard = new InlineKeyboard().text("Update 🔄", "update");
+    await ctx.editMessageText(prices.join("\n"), {
+      reply_markup: inlineKeyboard,
+      parse_mode: "HTML",
+    });
+  } catch {
+    sendMessage(ctx.chat.id);
+  }
+});
 
 bot.command("current", async (ctx) => {
   if (ctx.chat.id !== +process.env.CHAT_ID!) return;
   try {
-    const res = await axios.get(process.env.GET_PRICE_LINK!);
-    const prices: string[] = [];
-    srcCurrency.forEach((src) => {
-      dstCurrency.forEach((dst) => {
-        if (dst === src) return;
-        let price = src.toUpperCase() + "/";
-        if (dst in overrides) {
-          price += `${overrides[dst].nickname}:  ${overrides[dst]
-            .converter(+res.data.stats[`${src}-${dst}`].latest)
-            .toLocaleString()}`;
-        } else {
-          price += `${dst.toUpperCase()}:  ${(
-            res.data.stats[`${src}-${dst}`].latest as string
-          ).toLocaleString()}`;
-        }
-        prices.push(price);
-      });
-      prices.push("");
-    });
-
-    ctx.reply(prices.join("\n"), {
-      reply_parameters: { message_id: ctx.msg.message_id },
-    });
+    sendMessage(ctx.chat.id);
   } catch {
-    ctx.reply("Internal Error.\nCall @MahBodSr");
+    await ctx.reply("Internal Error.\nCall @MahBodSr");
   }
 });
 
-const server = createServer((req, res) => {
+const server = createServer((_, res) => {
   res.statusCode = 200;
   res.end();
 });
